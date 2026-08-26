@@ -20,9 +20,9 @@ export const nav: NavItem[] = [
   // Quiz and Ask Dolly are placeholder tabs — the design calls for all three,
   // but F2/F3 (the quiz + AI chat pages) are out of scope for this build.
   { path: '/quiz', label: 'Quiz' },
-  { path: '/ask-dolly', label: 'Ask Dolly' },
   { path: '/settings', label: 'Settings' },
   // The /api-status debug page still exists — add
   // `{ path: '/api-status', label: 'API Status', devOnly: true }` to surface it.
   // ── Features add nav items below this line ──
+  { path: '/assistant', label: 'Ask Dolly', roles: ['member' as Role] },
 ]
