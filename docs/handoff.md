@@ -45,6 +45,17 @@ Live: https://forever-dolly.app.space · Repo: github.com/mbaizhakyp/parton
 - "Sparkled by me" pill state is cosmetic and resets on reload (no per-user sparkle records).
 - A hidden tribute disappears from its own author's view (UI choice).
 
+## Round 2 (admin + testing sprint)
+
+**Shipped and deployed:**
+- **Admin dashboard** at `/admin` (Admin entry appears in your account dropdown once you're admin): overview tiles (fans, tributes incl. hidden, quiz plays, here-now, new errors), signups table (name, email, role, joined), every post incl. hidden with hide/pin/**delete** (confirm dialog), and the client error log grouped new → reviewed → fixed with expandable stacks and status buttons.
+- **Your admin seat:** sign in on the live site once with Google as **mbaizhakyp@gmail.com** → the `ensureAdmin` action promotes you automatically (email checked server-side from the verified JWT). Reload after first sign-in to pick up the role.
+- **Error catching, four layers:** SDK client-error reporter (all visitors → Workers Logs / `npx deepspace logs`), module-load window handlers + queue (signed-in errors → admin error log, 5/session throttle + dedupe), one shared `callAction` wrapper (every failed server action logged with context), and a React ErrorBoundary (render crashes show a warm on-theme error screen instead of a blank page).
+- **Test suite grew from 15 to 32 specs, all green:** edge cases (XSS-as-text, unicode, 500-char limit, place/year parsing), abuse (action fuzzing with malformed payloads, signed-out 401s, no cross-user affordances), stress (15-post burst across two clients, sparkle-race convergence, presence rise/fall), and admin (role gating, delete flow, error-log round-trip).
+- **The stress pass found and fixed a real bug (B4):** a same-tick double click posted twice — React's `disabled` state lands one render too late. Fixed with a synchronous re-entrancy guard; the failing test now pins it.
+
+**Add to your test list:** sign in as mbaizhakyp@gmail.com → reload → Admin appears in your account menu → check the tiles, delete a test post, and mark an error reviewed.
+
 ## Commit log for the night
 
 See `git log` — every phase committed separately with model attribution.
