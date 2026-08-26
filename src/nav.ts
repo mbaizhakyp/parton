@@ -27,4 +27,6 @@ export const nav: NavItem[] = [
   // Visible to everyone (the page itself prompts sign-in) so the header
   // always shows the design's three tabs.
   { path: '/assistant', label: 'Ask Dolly' },
+  // Renders only for the admin role (Navigation filters on `roles`).
+  { path: '/admin', label: 'Admin', roles: ['admin'] },
 ]

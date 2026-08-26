@@ -76,6 +76,7 @@ export default function Navigation() {
     <>
       <header
         data-testid="app-navigation"
+        data-user-role={userRole}
         className="sticky top-0 z-40 border-b backdrop-blur-[10px]"
         style={{ background: 'rgba(253,246,240,0.92)', borderColor: '#EDD9C8' }}
       >

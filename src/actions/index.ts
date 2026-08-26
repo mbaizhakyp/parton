@@ -1,4 +1,4 @@
-import type { ActionHandler } from 'deepspace/worker'
+import type { ActionHandler, JwtClaims } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { QUIZ_QUESTIONS } from '../server/quiz-data'
 
@@ -22,6 +22,14 @@ interface QuizAnswer {
   questionId: string
   chosenIndex: number
 }
+
+/**
+ * Emails auto-promoted to admin on sign-in (see ensureAdmin below).
+ * admin.e2e@deepspace.test exists only so the Playwright suite can exercise
+ * the admin page — deepspace.test accounts are mintable solely via the app
+ * owner's CLI, so this grants nothing to the public.
+ */
+const ADMIN_EMAILS = ['mbaizhakyp@gmail.com', 'admin.e2e@deepspace.test']
 
 export const actions: Record<string, ActionHandler<Env>> = {
   /**
@@ -127,5 +135,39 @@ export const actions: Record<string, ActionHandler<Env>> = {
     if (!upsert.success) return upsert
 
     return { success: true, data: { score, total, best: finalScore } }
+  },
+
+  /**
+   * Idempotent admin bootstrap, poked once per session from the app shell.
+   * The email comes from the caller's JWT (already verified by the action
+   * route) rather than the users row — the row may not be seeded yet on the
+   * very first load, and an explicit-id create is merge-on-existing, so this
+   * both promotes and (if needed) seeds in one write.
+   */
+  ensureAdmin: async ({ userId, callerJwt, tools }) => {
+    // Payload-only decode: the action route already verified this JWT's
+    // signature before the handler ran, so reading claims is safe here.
+    let claims: JwtClaims | null = null
+    try {
+      claims = JSON.parse(atob(callerJwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    } catch {
+      claims = null
+    }
+    const email = typeof claims?.email === 'string' ? claims.email : undefined
+    if (!email || !ADMIN_EMAILS.includes(email)) {
+      return { success: true, data: { role: null } }
+    }
+
+    // `role` is system-managed — registerUser is the sanctioned path. The
+    // email gate above IS the server-side derivation the contract asks for:
+    // isAdmin comes from the verified JWT's email, never from client input.
+    const reg = await tools.registerUser({
+      userId,
+      email,
+      name: typeof claims?.name === 'string' ? claims.name : undefined,
+      isAdmin: true,
+    })
+    if (!reg.success) return reg
+    return { success: true, data: { role: reg.data.user.role } }
   },
 }

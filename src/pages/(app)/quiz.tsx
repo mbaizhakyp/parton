@@ -16,7 +16,8 @@
  */
 
 import { useEffect, useState, type CSSProperties } from 'react'
-import { useAuthProfileReady, getAuthToken, AuthOverlay } from 'deepspace'
+import { useAuthProfileReady, AuthOverlay } from 'deepspace'
+import { callAction } from '../../lib/callAction'
 import { useToast } from '@/components/ui'
 import { CLIENT_QUESTIONS, QUIZ_TITLE } from '@/components/quiz/questions'
 import { Leaderboard } from '@/components/quiz/Leaderboard'
@@ -46,23 +47,6 @@ const OUTLINE_GOLD_BUTTON: CSSProperties = {
   color: GOLD,
   fontWeight: 600,
   borderRadius: 999,
-}
-
-/** Same shape as the docs' callAction example (server-actions guide). */
-async function callAction(
-  name: string,
-  params: Record<string, unknown>,
-): Promise<{ success: boolean; data?: unknown; error?: string }> {
-  const token = await getAuthToken()
-  const res = await fetch(`/api/actions/${name}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(params),
-  })
-  return res.json()
 }
 
 /** Idempotently ensures Playfair Display is loaded — the share card (F5)

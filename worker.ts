@@ -14,6 +14,7 @@ import {
   JobRoom,
   PresenceRoom,
   RecordRoom,
+  registerClientErrorRoute,
   resolveAppRole,
   YjsRoom,
 } from 'deepspace/worker'
@@ -138,6 +139,9 @@ registerActionRoutes(app, resolveAuth)
 // routes could only ever answer 500 (tools-api refuses the unknown
 // collection), so an app that has not adopted the schemas gets an honest 404.
 if (schemas.some((schema) => schema.name === AI_CHATS_SCHEMA.name)) registerAiChatRoutes(app, resolveAuth)
+// Browser-error ingestion → Workers Logs (`deepspace logs`, tagged CLIENT).
+// Must precede the /_deepspace/* platform proxy so the specific route wins.
+registerClientErrorRoute(app)
 registerPlatformProxyRoutes(app)
 registerStaticRoutes(app)
 

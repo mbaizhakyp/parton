@@ -15,14 +15,17 @@
  * their own layout without inheriting it.
  */
 
-import { Suspense, type ReactNode } from 'react'
+import { Component, Suspense, useEffect, type ReactNode } from 'react'
 import { Outlet } from 'react-router-dom'
-import { DeepSpaceAuthProvider, useAuthStatus } from 'deepspace'
+import { DeepSpaceAuthProvider, reportClientError, useAuthStatus, useAuthUser } from 'deepspace'
 import { RecordProvider, RecordScope } from 'deepspace'
 import Navigation from '../../components/Navigation'
+import { ErrorScreen } from '../../components/ErrorScreen'
 import { useToast } from '@/components/ui'
 import { SCOPE_ID } from '../../constants'
 import { schemas } from '../../schemas'
+import { callAction } from '../../lib/callAction'
+import { ErrorLogBridge, logClientError } from '../../lib/errorLog'
 
 export default function AppLayout() {
   return (
@@ -31,9 +34,11 @@ export default function AppLayout() {
         <div className="flex h-screen flex-col bg-background overflow-hidden">
           <Navigation />
           <main className="flex-1 overflow-y-auto min-h-0">
-            <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
-              <Outlet />
-            </Suspense>
+            <PageErrorBoundary>
+              <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
+                <Outlet />
+              </Suspense>
+            </PageErrorBoundary>
             <Footer />
           </main>
         </div>
@@ -89,8 +94,46 @@ function AuthBoot({ children }: { children: ReactNode }) {
       }
     >
       <RecordScope roomId={SCOPE_ID} schemas={schemas}>
+        <ErrorLogBridge />
+        <AdminBootstrap />
         {children}
       </RecordScope>
     </RecordProvider>
   )
+}
+
+/** Pokes the idempotent ensureAdmin action once per signed-in session so the
+ *  ADMIN_EMAILS owner picks up the admin role on first load. Renders nothing. */
+let adminPoked = false
+function AdminBootstrap() {
+  const { isSignedIn } = useAuthUser()
+  useEffect(() => {
+    if (!isSignedIn || adminPoked) return
+    adminPoked = true
+    void callAction('ensureAdmin', {})
+  }, [isSignedIn])
+  return null
+}
+
+/** Catches page-level render crashes: warm ErrorScreen for the user, one
+ *  report to Workers Logs + the admin error log. Chrome (nav/footer) survives. */
+class PageErrorBoundary extends Component<{ children: ReactNode }, { error: unknown }> {
+  state = { error: null as unknown }
+  static getDerivedStateFromError(error: unknown) {
+    return { error }
+  }
+  componentDidCatch(error: unknown, info: { componentStack?: string | null }) {
+    reportClientError(error, { componentStack: info.componentStack ?? undefined })
+    logClientError({
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: `render:${location.pathname}`,
+    })
+  }
+  render() {
+    if (this.state.error !== null) {
+      return <ErrorScreen error={this.state.error} onReset={() => this.setState({ error: null })} />
+    }
+    return this.props.children
+  }
 }

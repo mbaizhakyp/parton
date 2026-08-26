@@ -21,7 +21,6 @@ import {
   useAuthProfileReady,
   useMutations,
   useQuery,
-  getAuthToken,
   AuthOverlay,
   formatMessageTime,
   type RecordData,
@@ -38,6 +37,7 @@ import {
   Textarea,
   useToast,
 } from '@/components/ui'
+import { callAction } from '../../lib/callAction'
 
 const BODY_MAX_LENGTH = 500
 
@@ -67,23 +67,6 @@ interface Tribute {
   sparkles?: number
   hidden?: boolean
   pinned?: boolean
-}
-
-/** Same shape as the docs' `callAction` example (server-actions guide). */
-async function callAction(
-  name: string,
-  params: Record<string, unknown>,
-): Promise<{ success: boolean; data?: unknown; error?: string }> {
-  const token = await getAuthToken()
-  const res = await fetch(`/api/actions/${name}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(params),
-  })
-  return res.json()
 }
 
 function initials(name: string): string {
