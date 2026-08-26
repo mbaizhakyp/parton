@@ -1,0 +1,6 @@
+references/
+.agents/
+skills-lock.json
+node_modules/
+.env*
+.claude/
