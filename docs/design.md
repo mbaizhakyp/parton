@@ -4,6 +4,8 @@ Direction from the three Grok mockups: warm blush/cream/gold "guest book" feel. 
 
 ## Tokens
 
+Palette (map these onto the scaffold's shadcn token contract — see implementation note):
+
 ```css
 --bg: #FDF6F0;          /* cream */
 --surface: #FBEAEE;     /* blush card */
@@ -14,6 +16,11 @@ Direction from the three Grok mockups: warm blush/cream/gold "guest book" feel. 
 --text-muted: #8A6F73;
 --border: #EDD9C8;
 ```
+
+**Implementation (scaffold theme system):**
+1. Add a `[data-theme="dolly"] { ... }` block in `src/themes.css` overriding the shadcn tokens (`--color-background`, `--color-card`, `--color-primary`, `--color-border`, …) with the palette above; include `color-scheme: light;`. The `paper` theme in that file shows the full token contract to copy.
+2. Register `dolly` in `src/themes.ts`.
+3. Set `data-theme="dolly"` on `<html>` in `index.html` and add its `--color-background` (#FDF6F0) to the first-paint `<style>` block there.
 
 - Light theme only, committed (`color-scheme: light`). No dark variant — the warmth is the identity.
 - Fonts (Google Fonts): **Playfair Display** for display/headings, system sans for body. No script font — the logo is styled Playfair.
