@@ -146,6 +146,24 @@
 @utility slide-out-to-left-2 { --tw-exit-translate-x: -0.5rem; }
 @utility slide-out-to-right-2 { --tw-exit-translate-x: 0.5rem; }
 
+/*
+ * Forever Dolly animations — sparklePop (sparkle-button click feedback) and
+ * fadeUp (section/card mount). See references/design/forever-dolly-app-notes.md
+ * § Global. Plain @keyframes + @utility (no variant support needed here).
+ */
+@keyframes sparklePop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@utility animate-sparkle-pop { animation: sparklePop 0.35s ease; }
+@utility animate-fade-up { animation: fadeUp 0.3s ease both; }
+@utility animate-fade-up-fast { animation: fadeUp 0.25s ease both; }
+
 
 /*
  * Custom base styles — must be in @layer base so utility classes can override.

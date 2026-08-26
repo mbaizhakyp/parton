@@ -24,5 +24,7 @@ export const nav: NavItem[] = [
   // The /api-status debug page still exists — add
   // `{ path: '/api-status', label: 'API Status', devOnly: true }` to surface it.
   // ── Features add nav items below this line ──
-  { path: '/assistant', label: 'Ask Dolly', roles: ['member' as Role] },
+  // Visible to everyone (the page itself prompts sign-in) so the header
+  // always shows the design's three tabs.
+  { path: '/assistant', label: 'Ask Dolly' },
 ]

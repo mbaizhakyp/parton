@@ -27,6 +27,11 @@ export const THEMES = [
     label: 'Paper',
     description: 'Light example theme showing the token contract. Replace or delete.',
   },
+  {
+    id: 'dolly',
+    label: 'Forever Dolly',
+    description: 'Warm blush/cream/gold guest-book theme. Light only.',
+  },
 ] as const
 
 export type ThemeId = (typeof THEMES)[number]['id']

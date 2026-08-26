@@ -34,10 +34,29 @@ export default function AppLayout() {
             <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
               <Outlet />
             </Suspense>
+            <Footer />
           </main>
         </div>
       </AuthBoot>
     </DeepSpaceAuthProvider>
+  )
+}
+
+/** Shared footer, per references/design/forever-dolly-app-notes.md § Footer. */
+function Footer() {
+  return (
+    <footer className="border-t px-4 py-8 text-center" style={{ borderColor: '#EDD9C8', background: '#FBEAEE' }}>
+      <p className="font-serif text-lg italic" style={{ color: '#3D2B2E' }}>
+        Her music. Her heart. Her legacy.{' '}
+        <span className="not-italic" style={{ color: '#D4497A' }}>
+          ♥ Forever.
+        </span>
+      </p>
+      <p className="mt-2 text-[13px]" style={{ color: '#8A6F73' }}>
+        An unofficial fan project. Made with ♥ for Dolly. A guest book, a quiz, and a place to ask
+        questions — by fans, for fans.
+      </p>
+    </footer>
   )
 }
 

@@ -44,3 +44,39 @@
   --color-shell: #fafafa;
   --color-shell-panel: #ffffff;
 }
+
+/* Forever Dolly — warm blush/cream/gold "guest book" theme. See
+ * docs/design.md and references/design/forever-dolly-app-notes.md. Light
+ * only, committed: no dark variant. */
+[data-theme="dolly"] {
+  color-scheme: light;
+  --color-background: #fdf6f0;
+  --color-foreground: #3d2b2e;
+  --color-card: #fff9e8;
+  --color-card-foreground: #3d2b2e;
+  --color-popover: #fff9e8;
+  --color-popover-foreground: #3d2b2e;
+  --color-primary: #c9922a;
+  --color-primary-foreground: #fff9e8;
+  --color-secondary: #fbeaee;
+  --color-secondary-foreground: #3d2b2e;
+  --color-muted: #fbeaee;
+  --color-muted-foreground: #8a6f73;
+  --color-accent: #fbeaee;
+  --color-accent-foreground: #3d2b2e;
+  --color-destructive: #c1443b;
+  --color-destructive-foreground: #fdf6f0;
+  --color-border: #edd9c8;
+  --color-input: #edd9c8;
+  --color-ring: #c9922a;
+  --radius: 1rem;
+  --shadow-card: 0 1px 2px 0 rgba(61, 43, 46, 0.06);
+  --shadow-card-hover: 0 2px 8px 0 rgba(201, 146, 42, 0.16);
+  --color-shell: #fdf6f0;
+  --color-shell-panel: #fff9e8;
+
+  /* Display font — Playfair Display, loaded in index.html (400/600/700 +
+   * italics). Overriding the shared --font-serif token means the existing
+   * `font-serif` utility picks it up app-wide without a new utility class. */
+  --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
