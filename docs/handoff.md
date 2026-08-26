@@ -14,7 +14,10 @@ Live: https://forever-dolly.app.space · Repo: github.com/mbaizhakyp/parton
 8. **Privacy fix from review:** public wall and leaderboard names never fall back to your email (neutral "A Dolly Fan" instead).
 9. Playwright suite: wall post regression spec + 2 quiz specs (server grading 8/8, best-score-kept on a worse replay, signed-out leaderboard visibility) — all green against the real local runtime with platform test accounts.
 
-(sections below updated as the night continues)
+10. **Ask Dolly chat** (deployed): grounded persona system prompt (27-bullet fact sheet, never-as-Dolly + no-gossip rules, RBAC-scoped site-data tools), design-faithful chat card with 🦋 bubbles, quick-ask chips, streaming, per-user conversation persistence. Model picker removed — platform default model.
+11. **Full Playwright suite: 15/15 green** (`npx deepspace test run all`).
+12. README rewritten for the submission repo; `docs/writeup.md` drafted for the portal (edit to your voice).
+13. Live-site screenshots verified at desktop + mobile (`references/design/screenshots/live-*.png`, local only).
 
 ## What YOU need to test (in order)
 
@@ -25,7 +28,8 @@ Live: https://forever-dolly.app.space · Repo: github.com/mbaizhakyp/parton
 5. Quiz: play it; per-question reveal notes; score lands on the leaderboard live in a second tab; replay with a worse score keeps your best.
 6. Share: **on your real phone** — Share my score → native sheet → Instagram Stories accepts the image. Desktop: PNG downloads.
 7. Presence: second tab raises the header count.
-8. Ask Dolly: (pending tonight's chat build — see below.)
+8. Ask Dolly: send a question (uses YOUR DeepSpace credits) — streams an answer grounded in the fact sheet; try an off-topic question (politely steered back) and a gossip question (declined). Chips send instantly.
+9. Read `docs/writeup.md`, edit to your voice, and submit URL + repo + writeup in the portal.
 
 ## What YOU need to decide or do
 
