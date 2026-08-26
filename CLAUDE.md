@@ -22,5 +22,5 @@ Fable 5 orchestrates (briefs, diff review, integration, verification, deploys). 
 3. Use DeepSpace primitives (auth, records/sync, RBAC, ai-chat, presence) — do not reimplement them. Dependency budget: `html-to-image` only; new deps need explicit approval.
 4. No real-likeness imagery of Dolly or users; no scraped copyrighted content. AI speaks *about* Dolly, never as her.
 5. Secrets live only in the platform secrets store — never in the repo or client code.
-6. Deploy after every phase; commit small, one concern per commit.
+6. Deploy after every phase. Commit at every relevant point — a working feature slice, a schema/permissions change, a bug fix (reference its `docs/bugs.md` ID), a doc update. One concern per commit; never batch a phase into one commit.
 7. Light theme only, tokens from `docs/design.md`.
