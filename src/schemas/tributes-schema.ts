@@ -24,6 +24,10 @@ export const tributesSchema: CollectionSchema = {
   // gate value must be 0, not false.
   visibilityField: { field: 'hidden', value: 0 },
   permissions: {
+    // '*' is the signed-out wildcard (no 'anonymous' role exists) — required
+    // for F1's "visitor reads the wall" acceptance criterion. Schemas bake in
+    // at deploy time, so this takes effect on the next `deepspace deploy`.
+    '*': { read: 'published', create: false, update: false, delete: false },
     viewer: { read: 'published', create: false, update: false, delete: false },
     member: {
       read: 'published',

@@ -16,7 +16,11 @@ export interface NavItem {
 }
 
 export const nav: NavItem[] = [
-  { path: '/home', label: 'Home' },
+  { path: '/home', label: 'Wall' },
+  // Quiz and Ask Dolly are placeholder tabs — the design calls for all three,
+  // but F2/F3 (the quiz + AI chat pages) are out of scope for this build.
+  { path: '/quiz', label: 'Quiz' },
+  { path: '/ask-dolly', label: 'Ask Dolly' },
   { path: '/settings', label: 'Settings' },
   // The /api-status debug page still exists — add
   // `{ path: '/api-status', label: 'API Status', devOnly: true }` to surface it.
