@@ -8,6 +8,8 @@ One row per bug. Status: OPEN / FIXED / WONTFIX (with reason). Keep WONTFIX rows
 
 | B2 | 2 (wall) | Posting a tribute fails; toast: `Members can't edit "authorId"` | Client sent `authorId` in the create payload. `userBound` columns are stamped server-side from the JWT on create; sending the field trips the `writableFields` check first. Sonnet-written UI code. | Removed `authorId` from the create payload; typed it optional client-side with a comment. | FIXED | Posted a tribute on the live site after redeploy; appears with correct author |
 
+| B4 | stress tests | Rapid double-click on "Post to the Wall" creates two tributes | Two native clicks in the same JS tick both run `handleSubmit` before React commits `setSubmitting(true)`; the button's `disabled` prop reacts one render too late. Found by wall-edge.spec.ts (Sonnet test agent); race is stricter than B3's serialized clicks. | Synchronous `submittingRef` re-entrancy guard in `ComposerModal.handleSubmit`; reset in `finally`. | FIXED | wall-edge.spec.ts double-click test flips from red to green |
+
 ## Conventions
 
 - Log the bug **when found**, even mid-task — don't reconstruct at the end.

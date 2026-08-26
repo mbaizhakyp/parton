@@ -16,7 +16,7 @@
  * parallel build (quiz.tsx, scores schema) — out of scope here.
  */
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   useAuthProfileReady,
   useMutations,
@@ -308,11 +308,17 @@ function ComposerModal({
   const [placeYear, setPlaceYear] = useState('')
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Synchronous re-entrancy guard (B4): two native clicks in the same JS
+  // tick both fire before React commits setSubmitting(true), so the
+  // disabled prop alone can't stop a double post. A ref flips instantly.
+  const submittingRef = useRef(false)
   const { error } = useToast()
 
   async function handleSubmit() {
     const trimmed = body.trim()
     if (!trimmed) return
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmitting(true)
     try {
       const { place, year } = parsePlaceYear(placeYear)
@@ -321,6 +327,7 @@ function ComposerModal({
     } catch (e) {
       error('Could not post tribute', String(e))
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
   }
