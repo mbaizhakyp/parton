@@ -6,6 +6,8 @@ One row per bug. Status: OPEN / FIXED / WONTFIX (with reason). Keep WONTFIX rows
 |----|---------------|---------|-----------|-----|--------|--------------|
 | B1 | 0 (scaffold) | `deepspace app undeploy gymbro` fails with `Invalid app id`, blocking app registration (quota full). Platform bug, not app code. | `gymbro` is a legacy app whose id is its name (no `app_…` format); the undeploy endpoint rejects legacy ids. By-name and by-host forms also fail because the app was never deployed. | No CLI workaround exists: deploy also validates the `app_` format (`invalid_app_id`), so a legacy app can be neither deployed nor undeployed — untouchable by the toolchain. Escalated: dashboard feedback form + Discord ticket-0246. | OPEN | Reproduced undeploy in 3 CLI forms (`--json`: `undeploy_failed` / `app_not_found`); deploy-then-undeploy workaround tested — deploy refused client-side with `invalid_app_id` |
 
+| B2 | 2 (wall) | Posting a tribute fails; toast: `Members can't edit "authorId"` | Client sent `authorId` in the create payload. `userBound` columns are stamped server-side from the JWT on create; sending the field trips the `writableFields` check first. Sonnet-written UI code. | Removed `authorId` from the create payload; typed it optional client-side with a comment. | FIXED | Posted a tribute on the live site after redeploy; appears with correct author |
+
 ## Conventions
 
 - Log the bug **when found**, even mid-task — don't reconstruct at the end.

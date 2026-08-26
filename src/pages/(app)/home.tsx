@@ -38,7 +38,8 @@ import {
 const BODY_MAX_LENGTH = 500
 
 interface Tribute {
-  authorId: string
+  /** Stamped server-side from the JWT (userBound) — never sent by the client. */
+  authorId?: string
   authorName: string
   body: string
   place?: string
@@ -144,7 +145,9 @@ export default function WallPage() {
         <PostForm
           ready={ready}
           onSubmit={async ({ body, place, year }) => {
-            await create({ authorId: userId ?? '', authorName, body, place, year })
+            // authorId is userBound: the worker stamps it from the JWT on
+            // create — sending it trips the writableFields check (B2).
+            await create({ authorName, body, place, year })
             success('Tribute posted')
           }}
         />
