@@ -4,7 +4,7 @@ One row per bug. Status: OPEN / FIXED / WONTFIX (with reason). Keep WONTFIX rows
 
 | ID | Found (phase) | Symptom | Root cause | Fix | Status | Verified how |
 |----|---------------|---------|-----------|-----|--------|--------------|
-| B1 | — | *(example row — delete when first real bug lands)* leaderboard didn't update in second tab | — | — | OPEN | — |
+| B1 | 0 (scaffold) | `deepspace app undeploy gymbro` fails with `Invalid app id`, blocking app registration (quota full). Platform bug, not app code. | `gymbro` is a legacy app whose id is its name (no `app_…` format); the undeploy endpoint rejects legacy ids. By-name and by-host forms also fail because the app was never deployed. | Workaround: delete via dashboard.deep.space UI (CLI cannot reach it). If dashboard fails → support ticket. | OPEN | Reproduced 3 CLI forms (`--json` confirms `undeploy_failed` / `app_not_found`); `app list --json` shows legacy id |
 
 ## Conventions
 
