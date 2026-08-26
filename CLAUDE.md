@@ -1,5 +1,7 @@
 # Forever Dolly
 
+SDK guidance for agents: see [AGENTS.md](./AGENTS.md) (scaffold-installed, points at `.agents/skills/deepspace/`).
+
 Unofficial Dolly Parton fan tribute — internship build exercise on the DeepSpace SDK. Mobile-first. Timebox: 6–8h.
 
 ## Read first
