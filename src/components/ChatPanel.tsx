@@ -15,22 +15,10 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import {
-  AlertCircle,
-  ArrowUp,
-  Check,
-  ChevronDown,
-  Square,
-} from 'lucide-react'
-import { listDeepSpaceAgentModels, useQuery } from 'deepspace'
+import { AlertCircle } from 'lucide-react'
+import { useQuery } from 'deepspace'
 import { EmptyState, MessageTurn, ThinkingIndicator } from './ChatPanel.messages'
 import { useStreamingChat } from './ChatPanel.stream'
-
-export type ModelOption = {
-  id: string
-  label: string
-  provider: string
-}
 
 type AiMessageData = {
   chatId: string
@@ -54,9 +42,7 @@ export type ChatPanelProps = {
   userId: string
   /** Notified with the id when the panel creates a chat on first send. */
   onChatCreated?: (chatId: string) => void
-  /** Models shown in the picker. */
-  models?: ModelOption[]
-  /** Clickable prompts shown when the conversation is empty. */
+  /** Clickable prompts shown when the conversation is empty; sent immediately on click. */
   emptyStatePrompts?: string[]
   /** Applied to the outer container. */
   className?: string
@@ -68,48 +54,27 @@ export type ChatPanelProps = {
   disabled?: boolean
 }
 
-const MODEL_STORAGE_KEY = 'deepspace-ai-model'
+// No model picker — this app always sends with the worker's default model.
 const DEFAULT_PROMPTS = [
-  'What can you help with?',
-  'Summarize recent activity',
-  'List my collections',
+  'What inspired Jolene?',
+  'Tell me about the Imagination Library',
+  'What was her childhood like?',
 ]
-
-const DEFAULT_MODELS: ModelOption[] = listDeepSpaceAgentModels('application').map((model) => ({
-  id: model.id,
-  label: model.label,
-  provider: model.providerLabel,
-}))
 
 export function ChatPanel({
   chatId,
   userId,
   onChatCreated,
-  models: modelOptions,
   emptyStatePrompts = DEFAULT_PROMPTS,
   className,
   header,
   compact = false,
   disabled = false,
 }: ChatPanelProps) {
-  const models = modelOptions ?? DEFAULT_MODELS
   const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const stickToBottomRef = useRef(true)
   const [input, setInput] = useState('')
-  const [modelId, setModelId] = useState<string | undefined>(() =>
-    initialModelId(models),
-  )
-
-  // A custom model list may change at runtime. Never keep sending an id the
-  // picker no longer offers (the worker correctly rejects unknown ids).
-  useEffect(() => {
-    if (modelId && models.some((model) => model.id === modelId)) return
-    setModelId(models[0]?.id)
-  }, [modelId, models])
-
-  const groupedModels = useMemo(() => groupModelsByProvider(models), [models])
-  const selectedModel = models.find((model) => model.id === modelId)
 
   // Uncontrolled fallback: with `chatId={null}` the panel keeps the chat it
   // auto-creates on first send, so the overlay, the messages query, and later
@@ -133,7 +98,6 @@ export function ChatPanel({
 
   const { send, stop, retry, isLoading, error, inFlight } = useStreamingChat({
     chatId: activeChatId,
-    modelId,
     onChatCreated: handleChatCreated,
   })
 
@@ -188,20 +152,6 @@ export function ChatPanel({
     })
   }, [isLoading, messages])
 
-  useEffect(() => {
-    const element = inputRef.current
-    if (!element) return
-    if (!input) {
-      element.style.height = ''
-      return
-    }
-    const frame = requestAnimationFrame(() => {
-      element.style.height = 'auto'
-      element.style.height = `${Math.min(element.scrollHeight, 200)}px`
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [input])
-
   const canSend = input.trim().length > 0 && !isLoading && !disabled
 
   function submit() {
@@ -211,27 +161,19 @@ export function ChatPanel({
     void send(content)
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     // Enter commits an active IME composition; it must not also send it.
     if (event.nativeEvent.isComposing || event.keyCode === 229) return
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key === 'Enter') {
       event.preventDefault()
       submit()
     }
   }
 
+  // Chips send immediately — they're a shortcut to a full turn, not a draft.
   function selectPrompt(prompt: string) {
-    setInput(prompt)
-    inputRef.current?.focus()
-  }
-
-  function selectModel(id: string) {
-    setModelId(id)
-    try {
-      window.localStorage.setItem(MODEL_STORAGE_KEY, id)
-    } catch {
-      // Storage can be unavailable in privacy modes; selection still works.
-    }
+    if (isLoading || disabled) return
+    void send(prompt)
   }
 
   const lastMessage = messages[messages.length - 1]
@@ -244,7 +186,8 @@ export function ChatPanel({
 
   return (
     <div
-      className={`relative flex h-full min-h-0 flex-col bg-background text-foreground ${textSize} ${className ?? ''}`}
+      className={`relative flex h-full min-h-0 flex-col bg-background ${textSize} ${className ?? ''}`}
+      style={{ color: '#3D2B2E' }}
     >
       {header && <div className="shrink-0">{header}</div>}
 
@@ -290,163 +233,54 @@ export function ChatPanel({
         </div>
       )}
 
-      <div className={`shrink-0 border-t border-border/60 ${horizontalPadding} pb-4 pt-3`}>
+      <div className={`shrink-0 ${horizontalPadding} pb-4 pt-3`} style={{ borderTop: '1px solid #EDD9C8' }}>
         <form
           onSubmit={(event) => {
             event.preventDefault()
             submit()
           }}
-          className="mx-auto w-full max-w-[44rem]"
+          className="mx-auto flex w-full max-w-[44rem] items-center gap-2"
         >
-          <div className="relative rounded-2xl border border-border bg-background transition-colors focus-within:border-foreground/25 focus-within:ring-4 focus-within:ring-foreground/[0.04]">
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={disabled}
-              placeholder={disabled ? 'Creating chat…' : 'Message the assistant…'}
-              className="block w-full resize-none bg-transparent px-4 pt-3 pb-12 leading-[1.5] text-foreground placeholder:text-muted-foreground/60 outline-none disabled:cursor-not-allowed"
-            />
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled || isLoading}
+            placeholder={disabled ? 'Creating chat…' : 'Ask me anything about Dolly…'}
+            aria-label="Ask a question"
+            className="h-11 min-w-0 flex-1 rounded-full border px-4 leading-[1.5] outline-none disabled:cursor-not-allowed"
+            style={{ background: '#FDF6F0', borderColor: '#EDD9C8', color: '#3D2B2E' }}
+          />
 
-            <div className="pointer-events-none absolute inset-x-2 bottom-2 flex items-center justify-between">
-              {groupedModels.length > 0 && modelId && selectedModel ? (
-                <ModelPicker
-                  grouped={groupedModels}
-                  modelId={modelId}
-                  label={selectedModel.label}
-                  onChange={selectModel}
-                />
-              ) : <span />}
-
-              {isLoading ? (
-                <button
-                  type="button"
-                  onClick={stop}
-                  aria-label="Stop generating"
-                  className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90"
-                >
-                  <Square className="h-3 w-3 fill-current" aria-hidden="true" />
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!canSend}
-                  aria-label="Send message"
-                  className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:opacity-90 disabled:bg-muted disabled:text-muted-foreground/60 disabled:cursor-not-allowed"
-                >
-                  <ArrowUp className="h-4 w-4" aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          </div>
+          {isLoading ? (
+            <button
+              type="button"
+              onClick={stop}
+              aria-label="Stop generating"
+              className="h-11 shrink-0 rounded-full border px-4 font-semibold transition-opacity hover:opacity-90"
+              style={{ borderColor: '#C9922A', color: '#C9922A', background: '#FFF9E8' }}
+            >
+              Stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!canSend}
+              aria-label="Send message"
+              className="h-11 shrink-0 rounded-full border px-5 font-semibold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                borderColor: '#C9922A',
+                background: 'linear-gradient(180deg, #E0AE4E, #C9922A)',
+                color: '#FFF9E8',
+              }}
+            >
+              Send ✦
+            </button>
+          )}
         </form>
       </div>
-    </div>
-  )
-}
-
-function initialModelId(models: ModelOption[]): string | undefined {
-  let saved: string | null = null
-  try {
-    saved = typeof window === 'undefined'
-      ? null
-      : window.localStorage.getItem(MODEL_STORAGE_KEY)
-  } catch {
-    // Storage is optional.
-  }
-  return saved && models.some((model) => model.id === saved)
-    ? saved
-    : models[0]?.id
-}
-
-function groupModelsByProvider(models: ModelOption[]): Array<[string, ModelOption[]]> {
-  const groups = new Map<string, ModelOption[]>()
-  for (const model of models) {
-    const group = groups.get(model.provider) ?? []
-    group.push(model)
-    groups.set(model.provider, group)
-  }
-  return Array.from(groups.entries())
-}
-
-function ModelPicker({
-  grouped,
-  modelId,
-  label,
-  onChange,
-}: {
-  grouped: Array<[string, ModelOption[]]>
-  modelId: string
-  label: string
-  onChange: (id: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const closeOutside = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
-    }
-    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', closeOutside)
-    document.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('mousedown', closeOutside)
-      document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [open])
-
-  return (
-    <div ref={containerRef} className="pointer-events-auto relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <span className="max-w-[10rem] truncate">{label}</span>
-        <ChevronDown className="h-3 w-3 opacity-70" aria-hidden="true" />
-      </button>
-
-      {open && (
-        <div
-          role="menu"
-          className="absolute bottom-full left-0 z-30 mb-2 w-64 max-h-[22rem] overflow-y-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
-        >
-          {grouped.map(([provider, items], providerIndex) => (
-            <div key={provider}>
-              {providerIndex > 0 && <div className="border-t border-border/60" />}
-              <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {provider}
-              </div>
-              {items.map((model) => {
-                const active = model.id === modelId
-                return (
-                  <button
-                    key={model.id}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onChange(model.id)
-                      setOpen(false)
-                    }}
-                    className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-[12.5px] transition-colors ${active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'}`}
-                  >
-                    <span className="truncate">{model.label}</span>
-                    {active && <Check className="h-3 w-3 shrink-0 text-foreground/60" aria-hidden="true" />}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

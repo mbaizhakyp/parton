@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type ComponentPropsWithoutRef,
+  type ReactNode,
 } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -38,7 +39,10 @@ export const MessageTurn = memo(function MessageTurn({
   if (role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 leading-relaxed text-foreground whitespace-pre-wrap break-words">
+        <div
+          className="max-w-[82%] rounded-[14px] border px-4 py-2.5 text-[14px] leading-[1.5] whitespace-pre-wrap break-words"
+          style={{ background: '#D4497A', borderColor: '#D4497A', color: '#FFF9E8' }}
+        >
           {content}
         </div>
       </div>
@@ -58,7 +62,7 @@ export const MessageTurn = memo(function MessageTurn({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <AssistantBubble>
       {orderedParts.map((part, index) => {
         if (part.type === 'text') {
           if (!part.text) return null
@@ -67,9 +71,38 @@ export const MessageTurn = memo(function MessageTurn({
         return <ToolRow key={index} invocation={part.toolInvocation} />
       })}
       {isStreaming && <LiveIndicator />}
-    </div>
+    </AssistantBubble>
   )
 })
+
+/**
+ * Shared "🦋 avatar + bubble" shell for both a real assistant turn and the
+ * static greeting shown in the empty state — one place for the Ask Dolly
+ * bubble styling instead of duplicating it.
+ */
+function AssistantBubble({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2">
+      <div
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px]"
+        style={{ background: '#FBEAEE', borderColor: '#EDD9C8' }}
+        aria-hidden="true"
+      >
+        🦋
+      </div>
+      <div
+        className="flex max-w-[82%] flex-col gap-3 rounded-[14px] border px-4 py-2.5 text-[14px] leading-[1.5]"
+        style={{ background: 'rgba(253,246,240,0.85)', borderColor: '#EDD9C8', color: '#3D2B2E' }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+const GREETING =
+  "Hi! I'm here to answer questions about Dolly — her songs, her story, her " +
+  'library that mails kids free books. What are you curious about? ✦'
 
 export function EmptyState({
   prompts,
@@ -79,30 +112,28 @@ export function EmptyState({
   onPick: (prompt: string) => void
 }) {
   return (
-    <div className="mx-auto flex h-full max-w-[28rem] flex-col items-start justify-center gap-4 px-2">
-      <div className="space-y-1">
-        <h2 className="text-[17px] font-medium tracking-tight text-foreground">
-          How can I help?
-        </h2>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
-          I can inspect collections and help update records using your permissions.
-        </p>
-      </div>
-      <div className="flex flex-col gap-0.5 pt-2">
-        <div className="pb-1 text-[10.5px] font-medium tracking-[0.08em] uppercase text-muted-foreground">
-          Try
+    <div className="mx-auto flex max-w-[44rem] flex-col gap-4">
+      <AssistantBubble>
+        <p className="m-0">{GREETING}</p>
+      </AssistantBubble>
+
+      <div className="flex flex-col gap-2 pl-9">
+        <div className="text-[12px]" style={{ color: '#8A6F73' }}>
+          Try asking…
         </div>
-        {prompts.map((prompt) => (
-          <button
-            key={prompt}
-            type="button"
-            onClick={() => onPick(prompt)}
-            className="group flex items-center gap-2 py-1 text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <span className="h-px w-3 shrink-0 bg-border transition-colors group-hover:bg-muted-foreground" />
-            <span className="truncate">{prompt}</span>
-          </button>
-        ))}
+        <div className="flex flex-wrap gap-2">
+          {prompts.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => onPick(prompt)}
+              className="rounded-xl border px-3 py-1.5 text-left text-[13px] transition-colors hover:opacity-80"
+              style={{ background: '#FFF9E8', borderColor: '#EDD9C8', color: '#3D2B2E' }}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -110,9 +141,8 @@ export function EmptyState({
 
 export function ThinkingIndicator() {
   return (
-    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-      <EllipsisDots />
-      <span>Thinking</span>
+    <div className="flex items-center gap-2 pl-9 text-[13px]" style={{ color: '#8A6F73' }}>
+      <span>✦ thinking…</span>
     </div>
   )
 }
@@ -149,7 +179,7 @@ function isToolInvocation(value: unknown): value is ToolInvocation {
 function MarkdownText({ children }: { children: string }) {
   return (
     <div
-      className="text-foreground leading-relaxed
+      className="leading-relaxed
                  [&_p]:my-2 [&_p]:[overflow-wrap:anywhere] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0
                  [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:my-3
                  [&_h2]:text-base [&_h2]:font-semibold [&_h2]:my-3
