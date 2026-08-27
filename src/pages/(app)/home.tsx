@@ -108,6 +108,13 @@ export default function WallPage() {
   // this doesn't survive a reload. Cosmetic, not a correctness concern.
   const [sparkledIds, setSparkledIds] = useState<Set<string>>(new Set())
 
+  // ponytail: render-windowing only, not data pagination — every tribute is
+  // already synced client-side via useQuery. If the collection ever gets
+  // huge, the upgrade is data-layer pagination (a `limit`/cursor on the
+  // query), not more of this.
+  const [visibleCount, setVisibleCount] = useState(12)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
   const profileReady = !isSignedIn || (!userLoading && !!user)
   const isModerator = profileReady && (user?.role === 'moderator' || user?.role === 'admin')
   // The wall is publicly readable (signed-out visitors included) — never
@@ -137,6 +144,17 @@ export default function WallPage() {
   const visible = tributes
     .filter((t) => isModerator || !t.data.hidden)
     .sort((a, b) => Number(b.data.pinned) - Number(a.data.pinned))
+  const hasMore = visibleCount < visible.length
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !hasMore) return
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) setVisibleCount((c) => c + 12)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore])
 
   function openComposer() {
     if (!isSignedIn) {
@@ -225,7 +243,7 @@ export default function WallPage() {
           <EmptyWallCard onWrite={openComposer} />
         ) : (
           <div className="mt-10 grid grid-cols-1 gap-3.5 md:grid-cols-2">
-            {visible.map((t, i) => (
+            {visible.slice(0, visibleCount).map((t, i) => (
               <TributeCard
                 key={t.recordId}
                 tribute={t}
@@ -243,6 +261,7 @@ export default function WallPage() {
             ))}
           </div>
         )}
+        {hasMore && <div ref={sentinelRef} data-testid="wall-sentinel" aria-hidden className="h-1" />}
       </div>
 
       {showComposer && (
@@ -387,6 +406,40 @@ function ComposerModal({
         </Button>
       </Modal.Footer>
     </Modal>
+  )
+}
+
+// A body past this length (or with a lot of line breaks) gets clamped with a
+// "More" toggle instead of stretching every card to its longest post.
+const BODY_CLAMP_CHARS = 280
+const BODY_CLAMP_LINES = 6
+
+function TributeBody({ body }: { body: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = body.length > BODY_CLAMP_CHARS || (body.match(/\n/g)?.length ?? 0) > BODY_CLAMP_LINES
+
+  return (
+    <>
+      <p
+        className={cn(
+          'mt-2 whitespace-pre-wrap break-words text-[15px] leading-[1.55]',
+          isLong && !expanded && 'line-clamp-5',
+        )}
+        style={{ color: INK }}
+      >
+        {body}
+      </p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-[12px] font-medium hover:underline"
+          style={{ color: PINK }}
+        >
+          {expanded ? 'Show less' : 'More'}
+        </button>
+      )}
+    </>
   )
 }
 
@@ -579,9 +632,7 @@ function TributeCard({
               </div>
             </div>
           ) : (
-            <p className="mt-2 whitespace-pre-wrap text-[15px] leading-[1.55]" style={{ color: INK }}>
-              {tribute.data.body}
-            </p>
+            <TributeBody body={tribute.data.body} />
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-3">

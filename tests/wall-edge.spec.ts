@@ -8,11 +8,35 @@
  * so a fixed string would collide with leftover rows and trip Playwright's
  * strict-mode checks.
  */
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from 'deepspace/testing'
 import { postTribute, cardFor } from './helpers/wall'
 
 function runId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+}
+
+/**
+ * The wall only renders 12 cards at a time and grows the window via an
+ * IntersectionObserver on a bottom sentinel (`wall-sentinel`,
+ * render-windowing not data pagination — see the `ponytail:` comment in
+ * home.tsx). The page's scroll container is the layout's <main>, not the
+ * document, so repeatedly scrolling the sentinel into view (rather than
+ * `window.scrollTo`) is what actually grows the rendered window.
+ */
+async function scrollUntilVisible(page: Page, locator: Locator) {
+  const sentinel = page.getByTestId('wall-sentinel')
+  await expect
+    .poll(
+      async () => {
+        if (await locator.isVisible()) return true
+        if ((await sentinel.count()) === 0) return false // nothing left to load
+        await sentinel.scrollIntoViewIfNeeded().catch(() => {})
+        return false
+      },
+      { timeout: 20_000, intervals: [300] },
+    )
+    .toBe(true)
 }
 
 test('empty or whitespace-only body cannot be posted', async ({ users }) => {
@@ -222,13 +246,17 @@ test('posting 15 tributes propagates to a second context in order; a sparkle bur
     await postTribute(a.page, text)
   }
 
-  // Second, already-open context ends up seeing all 15 without a reload.
+  // Second, already-open context ends up seeing all 15 without a reload —
+  // texts[0] (the oldest of this batch) sits furthest down the rendered
+  // window, so once it's visible the rest (all newer) already are too.
+  await scrollUntilVisible(b.page, b.page.getByText(texts[0], { exact: true }))
   for (const text of texts) {
     await expect(b.page.getByText(text, { exact: true })).toBeVisible({ timeout: 15_000 })
   }
 
   // Newest-first among these unpinned cards: the body <p> nodes for this
   // run's marker should read in DOM order from #14 down to #0.
+  await scrollUntilVisible(a.page, a.page.getByText(texts[0], { exact: true }))
   const bodyNodes = a.page.locator('p', { hasText: `[${id}]` })
   await expect(bodyNodes).toHaveCount(15, { timeout: 15_000 })
   const domOrder = await bodyNodes.allTextContents()
