@@ -1,6 +1,7 @@
 import type { ActionHandler, JwtClaims } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { QUIZ_QUESTIONS } from '../server/quiz-data'
+import { SEED_TRIBUTES } from '../server/seed-tributes'
 
 interface TributeRecord {
   sparkles?: number
@@ -184,6 +185,52 @@ export const actions: Record<string, ActionHandler<Env>> = {
       // ignored — see comment above
     }
 
+    if (reg.data.user.role === 'admin') {
+      await seedWallOnce(tools, userId)
+    }
+
     return { success: true, data: { role: reg.data.user.role } }
   },
+}
+
+/**
+ * One-shot wall curation, run on the owner's first admin sign-in after
+ * deploy: replaces the pre-launch test posts with the curated starter cards
+ * from src/server/seed-tributes.ts. Idempotent — the explicit seed-01 id
+ * doubles as the "already seeded" flag, so later sign-ins are a single read.
+ * Best-effort: a failure here must never break sign-in.
+ */
+async function seedWallOnce(
+  tools: Parameters<ActionHandler<Env>>[0]['tools'],
+  userId: string,
+) {
+  try {
+    const flag = await tools.get('tributes', 'seed-01')
+    if (flag.success) return
+
+    const all = await tools.query('tributes', { limit: 10000 })
+    if (all.success) {
+      for (const r of all.data.records) await tools.remove('tributes', r.recordId)
+    }
+    // Reverse order so seed-01 — the "seeded" flag checked above — is
+    // written last: a half-run leaves the flag absent and the next admin
+    // sign-in retries (creates are merge-on-existing, so re-runs are safe).
+    for (const [i, t] of [...SEED_TRIBUTES.entries()].reverse()) {
+      await tools.create(
+        'tributes',
+        {
+          authorId: userId,
+          authorName: 'Forever Dolly',
+          body: t.body,
+          place: t.place,
+          year: t.year,
+          pinned: t.pinned ?? false,
+        },
+        `seed-${String(i + 1).padStart(2, '0')}`,
+      )
+    }
+  } catch {
+    // Best-effort: sign-in must never break over launch curation. A failed
+    // run leaves seed-01 absent, so the next admin sign-in retries.
+  }
 }
