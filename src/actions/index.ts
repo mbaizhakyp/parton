@@ -206,6 +206,21 @@ export const actions: Record<string, ActionHandler<Env>> = {
 
     const res = await tools.create('profiles', { userId, displayName: name }, userId)
     if (!res.success) return res
+
+    // Propagate to existing public snapshots so a rename takes effect
+    // everywhere at once — the point of renaming is usually privacy, and
+    // "your old name stays on the leaderboard until you replay" defeats it.
+    const score = await tools.get('scores', userId)
+    if (score.success) {
+      await tools.update('scores', userId, { playerName: name })
+    }
+    const own = await tools.query('tributes', { where: { authorId: userId }, limit: 1000 })
+    if (own.success) {
+      for (const r of own.data.records) {
+        await tools.update('tributes', r.recordId, { authorName: name })
+      }
+    }
+
     return { success: true, data: { name } }
   },
 }

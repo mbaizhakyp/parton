@@ -82,6 +82,22 @@ test('quiz grades server-side, posts to the leaderboard, and keeps the best scor
   // leaderboard still shows the earlier, better score.
   await alice.page.waitForTimeout(1000)
   await expect(myRow.getByTestId('leaderboard-score')).toHaveText(String(TOTAL))
+
+  // Renaming AFTER scoring must update the existing leaderboard row
+  // immediately — setDisplayName propagates to the score snapshot, no
+  // replay required.
+  const alias2 = `${alias} II`
+  await alice.page.goto('/settings')
+  const nameField2 = alice.page.getByPlaceholder('A Dolly Fan')
+  await expect(nameField2).toBeVisible({ timeout: 15_000 })
+  await nameField2.fill(alias2)
+  await alice.page.getByRole('button', { name: 'Save' }).click()
+  await expect(alice.page.getByText('Name updated')).toBeVisible({ timeout: 10_000 })
+
+  await alice.page.goto('/quiz')
+  const renamedRow = alice.page.getByTestId('leaderboard-row').filter({ hasText: alias2 })
+  await expect(renamedRow).toBeVisible({ timeout: 15_000 })
+  await expect(renamedRow.getByTestId('leaderboard-score')).toHaveText(String(TOTAL))
 })
 
 test('signed-out visitor sees the leaderboard read-only and starting the quiz prompts sign-in', async ({

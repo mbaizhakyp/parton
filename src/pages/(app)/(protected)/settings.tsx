@@ -22,7 +22,9 @@ export default function SettingsPage() {
 
   const current = profileRows.find((r) => r.recordId === userId)?.data.displayName || user?.name || ''
   const draft = name ?? current
-  const dirty = name !== null && name.trim() !== current && name.trim() !== ''
+  // Touched + non-empty is enough (re-saving the same name is allowed — it
+  // re-propagates to the leaderboard and past posts, which is harmless).
+  const dirty = name !== null && name.trim() !== ''
 
   async function save() {
     if (!dirty) return
@@ -31,7 +33,7 @@ export default function SettingsPage() {
       const res = await callAction('setDisplayName', { name: draft.trim() })
       if (!res.success) throw new Error(res.error || 'Save failed')
       setName(null)
-      success('Name updated', 'New tributes and quiz scores will use it. Replay the quiz once to rename your existing leaderboard entry.')
+      success('Name updated', 'Your posts and leaderboard entry now use it everywhere.')
     } catch (e) {
       error('Could not save', e instanceof Error ? e.message : String(e))
     } finally {
