@@ -1,8 +1,9 @@
 /**
  * Top nav — sticky, blurred "Forever Dolly" header. Wired to the app's
  * mechanisms: nav.ts-driven links (with role/dev filtering), sign-in via
- * <AuthOverlay>, sign-out, and a live presence pill (usePresenceRoom).
- * Restyle freely; keep the data-testid hooks (`app-navigation`,
+ * <AuthOverlay>, sign-out, and a fan-count pill sourced from the `stats`
+ * collection (total signups, not live presence — see ensureAdmin in
+ * src/actions). Restyle freely; keep the data-testid hooks (`app-navigation`,
  * `nav-sign-in-button`, `nav-user-name`, `nav-user-email`) — the shipped
  * tests rely on them. `nav-user-email` is the one that carries an identity
  * the test can check exactly: a display name is optional, the email is the
@@ -18,7 +19,7 @@
 
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { AuthOverlay, useAuthProfileReady, usePresenceRoom, signOut } from 'deepspace'
+import { AuthOverlay, useAuthProfileReady, usePresenceRoom, useQuery, signOut } from 'deepspace'
 import { ChevronDown, LogOut } from 'lucide-react'
 import { SCOPE_ID } from '../constants'
 import type { Role } from '../constants'
@@ -48,11 +49,15 @@ export default function Navigation() {
   const location = useLocation()
   const navigate = useNavigate()
   const [showAuthModal, setShowAuthModal] = useState(false)
-  // "N remembering right now" — real presence, not a hand-rolled heartbeat.
-  // Scoped to the whole app (not just /home) so the count in the header is
-  // consistent no matter which tab you're on.
-  const { peers } = usePresenceRoom(`${SCOPE_ID}:presence`)
-  const presenceCount = peers.length + 1 // +1 = this tab, always "present" once mounted
+  // "N fans remembering" — total signups (stats.fans, refreshed by
+  // ensureAdmin on every sign-in), not a live presence count. Single-row
+  // collection, so there's only ever the 'site' record.
+  const { records: statsRecords, status: statsStatus } = useQuery<{ fans: number }>('stats', {})
+  const fans = statsRecords[0]?.data.fans
+  // Still join the presence room (return value unused): the admin "Here now"
+  // tile counts peers in this room, and the header mounting on every page is
+  // what enrolls ordinary visitors in it.
+  usePresenceRoom(`${SCOPE_ID}:presence`)
 
   const profileReady = !isSignedIn || (!userLoading && !!user)
   const userRole = (user?.role ?? 'anonymous') as Role | 'anonymous'
@@ -104,7 +109,7 @@ export default function Navigation() {
             </div>
 
             <div className="flex flex-1 items-center justify-end gap-2 md:flex-none">
-              <PresencePill count={presenceCount} />
+              {statsStatus === 'ready' && fans !== undefined && <PresencePill count={fans} />}
 
               {!isLoaded ? null : isSignedIn && !profileReady ? (
                 /* Signed in, profile still loading — skeleton pill, never the
@@ -229,7 +234,9 @@ function PresencePill({ count }: { count: number }) {
       className="inline-flex min-h-8 shrink-0 items-center rounded-full border px-3 text-[13px]"
       style={{ background: '#FFF9E8', borderColor: '#EDD9C8', color: '#8A6F73' }}
     >
-      <span className="hidden sm:inline">✦ {count} remembering right now</span>
+      <span className="hidden sm:inline">
+        ✦ {count} {count === 1 ? 'fan' : 'fans'} remembering
+      </span>
       <span className="sm:hidden">{count}</span>
     </div>
   )

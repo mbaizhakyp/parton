@@ -13,6 +13,7 @@ import { settingsSchema } from './schemas/admin-schema'
 import { tributesSchema } from './schemas/tributes-schema'
 import { scoresSchema } from './schemas/scores-schema'
 import { clientErrorsSchema } from './schemas/client-errors-schema'
+import { statsSchema } from './schemas/stats-schema'
 
 import { aiChatSchemas } from './schemas/ai-chat-schema'
 
@@ -23,4 +24,5 @@ export const schemas: CollectionSchema[] = [
   tributesSchema,
   scoresSchema,
   clientErrorsSchema,
+  statsSchema,
 ]

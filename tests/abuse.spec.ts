@@ -90,13 +90,21 @@ test('addSparkle with a bogus tributeId errors without crashing the server', asy
 
 test('presence count rises when a third context opens and falls when it closes', async ({ users, browser }) => {
   test.setTimeout(60_000)
-  const [a] = await users(1)
+  // Live presence moved from the header pill (now total-signups) to the
+  // admin "Here now" tile — same room, admin-only surface.
+  const [a] = await users(['Admin E2E'])
   await a.page.goto('/home')
   await expect(a.page.getByTestId('app-navigation')).toBeVisible({ timeout: 15_000 })
+  await a.page.reload()
+  await expect(a.page.getByTestId('app-navigation')).toHaveAttribute('data-user-role', 'admin', {
+    timeout: 15_000,
+  })
+  await a.page.goto('/admin')
+  await expect(a.page.getByTestId('admin-tiles')).toBeVisible({ timeout: 15_000 })
 
-  const pill = a.page.getByText(/remembering right now/i)
+  const tile = a.page.getByTestId('admin-tiles').locator('div', { hasText: /^Here now$/ }).locator('..')
   async function readCount(): Promise<number> {
-    const text = await pill.innerText()
+    const text = await tile.innerText()
     return Number(text.replace(/[^\d]/g, ''))
   }
 

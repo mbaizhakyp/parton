@@ -138,11 +138,16 @@ export const actions: Record<string, ActionHandler<Env>> = {
   },
 
   /**
-   * Idempotent admin bootstrap, poked once per session from the app shell.
-   * The email comes from the caller's JWT (already verified by the action
-   * route) rather than the users row — the row may not be seeded yet on the
-   * very first load, and an explicit-id create is merge-on-existing, so this
-   * both promotes and (if needed) seeds in one write.
+   * Idempotent bootstrap, poked once per signed-in session from the app
+   * shell. The email comes from the caller's JWT (already verified by the
+   * action route) rather than the users row — the row may not be seeded yet
+   * on the very first load, and an explicit-id create is merge-on-existing,
+   * so this both promotes and (if needed) seeds in one write.
+   *
+   * Every signed-in caller registers now (not just ADMIN_EMAILS) — that's
+   * what completes the admin signups table for ordinary fans — while
+   * isAdmin is still derived only from the verified JWT's email, never from
+   * client input.
    */
   ensureAdmin: async ({ userId, callerJwt, tools }) => {
     // Payload-only decode: the action route already verified this JWT's
@@ -154,20 +159,31 @@ export const actions: Record<string, ActionHandler<Env>> = {
       claims = null
     }
     const email = typeof claims?.email === 'string' ? claims.email : undefined
-    if (!email || !ADMIN_EMAILS.includes(email)) {
+    if (!email) {
+      // Some JWTs may lack an email — nothing to register against.
       return { success: true, data: { role: null } }
     }
 
-    // `role` is system-managed — registerUser is the sanctioned path. The
-    // email gate above IS the server-side derivation the contract asks for:
-    // isAdmin comes from the verified JWT's email, never from client input.
+    // `role` is system-managed — registerUser is the sanctioned path.
     const reg = await tools.registerUser({
       userId,
       email,
       name: typeof claims?.name === 'string' ? claims.name : undefined,
-      isAdmin: true,
+      isAdmin: ADMIN_EMAILS.includes(email),
     })
     if (!reg.success) return reg
+
+    // Best-effort refresh of the header's fan count. Never let a stats
+    // write failure break sign-in over a cosmetic counter.
+    try {
+      const list = await tools.query('users', { limit: 10000 })
+      if (list.success) {
+        await tools.create('stats', { fans: list.data.count }, 'site')
+      }
+    } catch {
+      // ignored — see comment above
+    }
+
     return { success: true, data: { role: reg.data.user.role } }
   },
 }
