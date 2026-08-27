@@ -116,10 +116,15 @@ export const actions: Record<string, ActionHandler<Env>> = {
       0,
     )
 
-    const userRes = await tools.get<UserRecord>('users', userId)
+    // Chosen display name first (profiles), then the auth-provider name.
     // Name only — never the email: the leaderboard is public ('*' read),
     // so an email fallback would publish addresses.
-    const playerName = (userRes.success && userRes.data.record.data.name) || 'A Dolly Fan'
+    const profileRes = await tools.get<{ displayName?: string }>('profiles', userId)
+    const userRes = await tools.get<UserRecord>('users', userId)
+    const playerName =
+      (profileRes.success && profileRes.data.record.data.displayName) ||
+      (userRes.success && userRes.data.record.data.name) ||
+      'A Dolly Fan'
 
     const existing = await tools.get<ScoreRecord>('scores', userId)
     const best = existing.success ? existing.data.record.data : null
@@ -151,14 +156,7 @@ export const actions: Record<string, ActionHandler<Env>> = {
    * client input.
    */
   ensureAdmin: async ({ userId, callerJwt, tools }) => {
-    // Payload-only decode: the action route already verified this JWT's
-    // signature before the handler ran, so reading claims is safe here.
-    let claims: JwtClaims | null = null
-    try {
-      claims = JSON.parse(atob(callerJwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-    } catch {
-      claims = null
-    }
+    const claims = decodeClaims(callerJwt)
     const email = typeof claims?.email === 'string' ? claims.email : undefined
     if (!email) {
       // Some JWTs may lack an email — nothing to register against.
@@ -166,6 +164,8 @@ export const actions: Record<string, ActionHandler<Env>> = {
     }
 
     // `role` is system-managed — registerUser is the sanctioned path.
+    // (users.name mirrors the auth provider by SDK design; custom display
+    // names live in the `profiles` collection — see setDisplayName.)
     const reg = await tools.registerUser({
       userId,
       email,
@@ -191,6 +191,35 @@ export const actions: Record<string, ActionHandler<Env>> = {
 
     return { success: true, data: { role: reg.data.user.role } }
   },
+
+  /**
+   * Self-service display-name change, stored in the app-owned `profiles`
+   * collection. It can't live in users.name: that column is a platform
+   * mirror of the auth-provider name, re-stamped by the SDK's own
+   * registerUser on every WS connect — a custom value there survives only
+   * until the next reconnect. Explicit-recordId create = upsert keyed by
+   * the caller (same seeding pattern as scores).
+   */
+  setDisplayName: async ({ userId, params, tools }) => {
+    const name = typeof params.name === 'string' ? params.name.trim().slice(0, 60) : ''
+    if (!name) return { success: false, error: 'Name cannot be empty' }
+
+    const res = await tools.create('profiles', { userId, displayName: name }, userId)
+    if (!res.success) return res
+    return { success: true, data: { name } }
+  },
+}
+
+/**
+ * Payload-only JWT decode: action routes verify the signature before the
+ * handler runs, so reading claims here is safe.
+ */
+function decodeClaims(callerJwt: string): JwtClaims | null {
+  try {
+    return JSON.parse(atob(callerJwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+  } catch {
+    return null
+  }
 }
 
 /**

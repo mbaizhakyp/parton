@@ -61,3 +61,24 @@ test('header fans pill is sourced from stats after sign-in and reload', async ({
   const pill = a.page.getByText(/\d+ fans? remembering/)
   await expect(pill).toBeVisible({ timeout: 15_000 })
 })
+
+test('display name edited in Settings bylines the next tribute', async ({ users }) => {
+  const [a] = await users(1)
+  const alias = `Nick ${runId()}`
+
+  await a.page.goto('/settings')
+  const nameField = a.page.getByPlaceholder('A Dolly Fan')
+  await expect(nameField).toBeVisible({ timeout: 15_000 })
+  await nameField.fill(alias)
+  await a.page.getByRole('button', { name: 'Save' }).click()
+  await expect(a.page.getByText('Name updated')).toBeVisible({ timeout: 10_000 })
+
+  await a.page.goto('/home')
+  await expect(a.page.getByTestId('app-navigation')).toBeVisible({ timeout: 15_000 })
+  const body = `Aliased tribute [${runId()}]`
+  await a.page.getByRole('button', { name: /leave a tribute|write the first tribute/i }).first().click()
+  await a.page.getByPlaceholder(/what she means to you/i).fill(body)
+  await a.page.getByRole('button', { name: /post to the wall/i }).click()
+  await expect(a.page.getByText(body, { exact: true })).toBeVisible({ timeout: 10_000 })
+  await expect(cardFor(a.page, body).getByText(alias)).toBeVisible({ timeout: 10_000 })
+})

@@ -41,6 +41,18 @@ test('quiz grades server-side, posts to the leaderboard, and keeps the best scor
   users,
 }) => {
   const [alice] = await users(1)
+
+  // Own the leaderboard name instead of assuming the account's Google name:
+  // submitQuiz prefers profiles.displayName (settable in Settings, persists
+  // in the local DB across runs), so pin it to a unique per-run alias first.
+  const alias = `Quizzer ${Date.now().toString(36)}`
+  await alice.page.goto('/settings')
+  const nameField = alice.page.getByPlaceholder('A Dolly Fan')
+  await expect(nameField).toBeVisible({ timeout: 15_000 })
+  await nameField.fill(alias)
+  await alice.page.getByRole('button', { name: 'Save' }).click()
+  await expect(alice.page.getByText('Name updated')).toBeVisible({ timeout: 10_000 })
+
   await alice.page.goto('/quiz')
   await expect(alice.page.getByTestId('quiz-intro')).toBeVisible({ timeout: 15_000 })
 
@@ -53,7 +65,7 @@ test('quiz grades server-side, posts to the leaderboard, and keeps the best scor
 
   // The leaderboard is realtime (useQuery's WebSocket subscription) — no
   // reload needed for alice's own submission to appear.
-  const myRow = alice.page.getByTestId('leaderboard-row').filter({ hasText: alice.name })
+  const myRow = alice.page.getByTestId('leaderboard-row').filter({ hasText: alias })
   await expect(myRow).toBeVisible({ timeout: 15_000 })
   await expect(myRow.getByTestId('leaderboard-score')).toHaveText(String(TOTAL))
 

@@ -97,6 +97,11 @@ export default function WallPage() {
     orderDir: 'desc',
   })
   const { create, put, remove, ready } = useMutations<Tribute>('tributes')
+  // Chosen display name, live from the synced profiles row (set in
+  // Settings). Members only see their own row, but admins see all: find by
+  // id, never [0]. Falls back to the auth-provider name below.
+  const { records: profileRows } = useQuery<{ displayName?: string }>('profiles', {})
+  const liveName = profileRows.find((r) => r.recordId === userId)?.data.displayName
   const { success, error } = useToast()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showComposer, setShowComposer] = useState(false)
@@ -119,7 +124,7 @@ export default function WallPage() {
   const isModerator = profileReady && (user?.role === 'moderator' || user?.role === 'admin')
   // The wall is publicly readable (signed-out visitors included) — never
   // fall back to email here. A display name, or a neutral placeholder.
-  const authorName = user?.name || 'A Dolly Fan'
+  const authorName = liveName || user?.name || 'A Dolly Fan'
 
   useEffect(() => {
     setPendingSparkles((prev) => {

@@ -1,32 +1,72 @@
 /**
- * Example gated page. Reached at /settings — no auth logic lives here
- * because (protected)/_layout.tsx already wraps the subtree in <AuthGate>.
+ * /settings — account page. No auth logic here; (protected)/_layout.tsx
+ * wraps the subtree in <AuthGate>. The display name is the one field a user
+ * can change — it's what the wall bylines and the quiz leaderboard show, so
+ * it doubles as the privacy control: set a nickname and your real name
+ * appears nowhere public. The rename goes through the setDisplayName action
+ * (users.name is system-assigned; direct client writes are refused).
  */
 
-import { signOut, useUser } from 'deepspace'
-import { Button } from '@/components/ui'
+import { useState } from 'react'
+import { signOut, useAuthProfileReady, useQuery } from 'deepspace'
+import { Button, Input, useToast } from '@/components/ui'
+import { callAction } from '../../../lib/callAction'
 
 export default function SettingsPage() {
-  const { user } = useUser()
+  const { userId, user } = useAuthProfileReady({ requireUser: true })
+  // Own profiles row (read: 'own'); admins see every row, so find by id.
+  const { records: profileRows } = useQuery<{ displayName?: string }>('profiles', {})
+  const { success, error } = useToast()
+  const [name, setName] = useState<string | null>(null) // null = untouched
+  const [saving, setSaving] = useState(false)
+
+  const current = profileRows.find((r) => r.recordId === userId)?.data.displayName || user?.name || ''
+  const draft = name ?? current
+  const dirty = name !== null && name.trim() !== current && name.trim() !== ''
+
+  async function save() {
+    if (!dirty) return
+    setSaving(true)
+    try {
+      const res = await callAction('setDisplayName', { name: draft.trim() })
+      if (!res.success) throw new Error(res.error || 'Save failed')
+      setName(null)
+      success('Name updated', 'New tributes and quiz scores will use it. Replay the quiz once to rename your existing leaderboard entry.')
+    } catch (e) {
+      error('Could not save', e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    // No background on page wrappers — pages render into whatever the app's
-    // (app)/_layout provides (a plain background, or a raised panel), so they
-    // stay transparent and inherit it.
     <div className="min-h-full text-foreground">
       <div className="mx-auto max-w-2xl px-6 py-20">
-        <h1 className="mb-12 text-4xl font-bold tracking-tight">Settings</h1>
+        <h1 className="mb-12 font-serif text-4xl font-bold tracking-tight">Settings</h1>
 
         <section className="rounded-lg border border-border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">Your account</h2>
 
-          <dl className="space-y-3 text-sm">
+          <dl className="space-y-4 text-sm">
             <div>
-              <dt className="text-muted-foreground">Name</dt>
-              <dd className="text-foreground">{user?.name ?? '—'}</dd>
+              <dt className="mb-1 text-muted-foreground">
+                Display name <span className="text-xs">— shown on the wall and leaderboard</span>
+              </dt>
+              <dd className="flex items-center gap-2">
+                <Input
+                  value={draft}
+                  maxLength={60}
+                  placeholder="A Dolly Fan"
+                  onChange={(e) => setName(e.target.value)}
+                  className="max-w-xs"
+                />
+                <Button size="sm" disabled={!dirty || saving} onClick={save}>
+                  {saving ? 'Saving…' : 'Save'}
+                </Button>
+              </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Email</dt>
+              <dt className="text-muted-foreground">Email <span className="text-xs">— never shown publicly</span></dt>
               <dd className="text-foreground">{user?.email ?? '—'}</dd>
             </div>
           </dl>

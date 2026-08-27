@@ -10,6 +10,8 @@ One row per bug. Status: OPEN / FIXED / WONTFIX (with reason). Keep WONTFIX rows
 
 | B4 | stress tests | Rapid double-click on "Post to the Wall" creates two tributes | Two native clicks in the same JS tick both run `handleSubmit` before React commits `setSubmitting(true)`; the button's `disabled` prop reacts one render too late. Found by wall-edge.spec.ts (Sonnet test agent); race is stricter than B3's serialized clicks. | Synchronous `submittingRef` re-entrancy guard in `ComposerModal.handleSubmit`; reset in `finally`. | FIXED | wall-edge.spec.ts double-click test flips from red to green |
 
+| B5 | round 3 (settings) | Display name saved in Settings silently reverts to the Google name | Two-layer platform behavior: (1) `users.name` is SYSTEM_ASSIGNED — the worker refuses direct client writes regardless of schema permissions, and the optimistic `put` still reports success (`putConfirmed` hangs, never acked); (2) even a sanctioned `registerUser` rename is re-stamped from the JWT by the SDK's own connect-time registerUser on every WS reconnect. `users.name` is a platform mirror by design. | Custom names moved to an app-owned `profiles` collection (action-only writes via `setDisplayName`, explicit-recordId upsert); wall composer, Settings, and `submitQuiz` prefer `profiles.displayName` over `users.name`. | FIXED | wall-ui.spec.ts "display name edited in Settings bylines the next tribute" red → green; local DB inspected to confirm the clobber before the fix |
+
 ## Conventions
 
 - Log the bug **when found**, even mid-task — don't reconstruct at the end.
