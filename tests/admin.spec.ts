@@ -7,6 +7,7 @@
  * client-error log's capture + review flow.
  */
 import { test, expect } from 'deepspace/testing'
+import { cardFor } from './helpers/wall'
 
 test('non-admin sees no admin nav entry and no admin content', async ({ users }) => {
   const [member] = await users(['Tester One'])
@@ -93,4 +94,34 @@ test('client error reaches the admin log and review status persists', async ({ u
     .locator('div.rounded-2xl', { hasText: message })
     .first()
   await expect(rowAfter.getByText('reviewed')).toBeVisible({ timeout: 15_000 })
+})
+
+test('admin rename leaves curated seed cards bylined Forever Dolly', async ({ users }) => {
+  const [admin] = await users(['Admin E2E'])
+
+  // First load pokes ensureAdmin (which also upserts the curated seeds);
+  // reload so the admin role and the seeded wall are both in place.
+  await admin.page.goto('/home')
+  await expect(admin.page.getByTestId('app-navigation')).toBeVisible({ timeout: 15_000 })
+  await admin.page.reload()
+  await expect(admin.page.getByTestId('app-navigation')).toHaveAttribute('data-user-role', 'admin', {
+    timeout: 15_000,
+  })
+
+  // Rename the admin — propagation runs inside the action, so once the
+  // toast confirms, the server state is final.
+  const alias = `Renamed Admin ${Date.now().toString(36)}`
+  await admin.page.goto('/settings')
+  const nameField = admin.page.getByPlaceholder('A Dolly Fan')
+  await expect(nameField).toBeVisible({ timeout: 15_000 })
+  await nameField.fill(alias)
+  await admin.page.getByRole('button', { name: 'Save' }).click()
+  await expect(admin.page.getByText('Name updated')).toBeVisible({ timeout: 10_000 })
+
+  // The seeds carry the admin's authorId but must keep the curated byline.
+  await admin.page.goto('/home')
+  const seedCard = cardFor(admin.page, 'sack of cornmeal')
+  await expect(seedCard).toBeVisible({ timeout: 15_000 })
+  await expect(seedCard.getByText('Forever Dolly')).toBeVisible()
+  await expect(seedCard.getByText(alias)).toHaveCount(0)
 })

@@ -217,6 +217,9 @@ export const actions: Record<string, ActionHandler<Env>> = {
     const own = await tools.query('tributes', { where: { authorId: userId }, limit: 1000 })
     if (own.success) {
       for (const r of own.data.records) {
+        // Curated cards carry the owner's authorId but are bylined
+        // "Forever Dolly" — a personal rename must never rebrand them.
+        if (r.recordId.startsWith('seed-')) continue
         await tools.update('tributes', r.recordId, { authorName: name })
       }
     }
@@ -238,10 +241,10 @@ function decodeClaims(callerJwt: string): JwtClaims | null {
 }
 
 /**
- * One-shot wall curation, run on the owner's first admin sign-in after
- * deploy: replaces the pre-launch test posts with the curated starter cards
- * from src/server/seed-tributes.ts. Idempotent — the explicit seed-01 id
- * doubles as the "already seeded" flag, so later sign-ins are a single read.
+ * Wall curation, run on every admin sign-in. The pre-launch test-post wipe
+ * happens once (the explicit seed-01 id is the "wipe happened" flag); the
+ * curated cards themselves are upserted every time, so their canonical
+ * byline/body self-heal if anything else ever touches a seed record.
  * Best-effort: a failure here must never break sign-in.
  */
 async function seedWallOnce(
@@ -250,15 +253,16 @@ async function seedWallOnce(
 ) {
   try {
     const flag = await tools.get('tributes', 'seed-01')
-    if (flag.success) return
-
-    const all = await tools.query('tributes', { limit: 10000 })
-    if (all.success) {
-      for (const r of all.data.records) await tools.remove('tributes', r.recordId)
+    if (!flag.success) {
+      const all = await tools.query('tributes', { limit: 10000 })
+      if (all.success) {
+        for (const r of all.data.records) await tools.remove('tributes', r.recordId)
+      }
     }
-    // Reverse order so seed-01 — the "seeded" flag checked above — is
-    // written last: a half-run leaves the flag absent and the next admin
-    // sign-in retries (creates are merge-on-existing, so re-runs are safe).
+    // Reverse order so seed-01 — the wipe flag checked above — is written
+    // last: a half-run leaves the flag absent and the next admin sign-in
+    // re-wipes and retries (creates are merge-on-existing, so re-runs are
+    // safe).
     for (const [i, t] of [...SEED_TRIBUTES.entries()].reverse()) {
       await tools.create(
         'tributes',
@@ -274,7 +278,6 @@ async function seedWallOnce(
       )
     }
   } catch {
-    // Best-effort: sign-in must never break over launch curation. A failed
-    // run leaves seed-01 absent, so the next admin sign-in retries.
+    // Best-effort: sign-in must never break over launch curation.
   }
 }
